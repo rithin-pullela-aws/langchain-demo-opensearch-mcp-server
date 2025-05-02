@@ -2,17 +2,13 @@ import asyncio
 from dotenv import load_dotenv
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_openai import ChatOpenAI
-from langchain.agents import create_react_agent, AgentExecutor, AgentType, initialize_agent
-from langchain import hub
+from langchain.agents import AgentType, initialize_agent
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Get the prompt to use - you can modify this!
-prompt = hub.pull("hwchase17/react")
-model = ChatOpenAI(model="gpt-4o", temperature=0)
+model = ChatOpenAI(model="gpt-4o")
 async def main():
-    # 1) Connect to your SSE MCP server
     async with MultiServerMCPClient({
         "opensearch": {
         "url": "http://localhost:9200/_plugins/_ml/mcp/sse?append_to_base_url=true",
@@ -20,8 +16,7 @@ async def main():
         "headers": {
             "Content-Type": "application/json",
             "Accept-Encoding": "identity",  # ← disable gzip/deflate
-        },
-        "sse_read_timeout": 10,
+        }
     }
     }) as client:
         tools = client.get_tools()
@@ -31,11 +26,8 @@ async def main():
             agent=AgentType.OPENAI_FUNCTIONS,
             verbose=True,
         )
+        print(tools)
 
-        # note: with function‐calling agent, .ainvoke() still expects a dict
-        result = await agent.ainvoke({"input": "List Opensearch indices"})
-        # result will be something like {"output": "... final answer ..."}
-        print(result)
-        print(result["output"])
+        await agent.ainvoke({"input": "List all the products from Opensearch"})
 if __name__ == "__main__":
     asyncio.run(main())
